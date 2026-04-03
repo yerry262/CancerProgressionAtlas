@@ -1,0 +1,142 @@
+export const CANCER_TYPES = [
+  // Carcinomas
+  { value: 'breast', label: 'Breast Cancer', category: 'Carcinoma' },
+  { value: 'lung_nsclc', label: 'Lung Cancer – NSCLC', category: 'Carcinoma' },
+  { value: 'lung_sclc', label: 'Lung Cancer – SCLC', category: 'Carcinoma' },
+  { value: 'colorectal', label: 'Colorectal Cancer', category: 'Carcinoma' },
+  { value: 'prostate', label: 'Prostate Cancer', category: 'Carcinoma' },
+  { value: 'ovarian', label: 'Ovarian Cancer', category: 'Carcinoma' },
+  { value: 'cervical', label: 'Cervical Cancer', category: 'Carcinoma' },
+  { value: 'endometrial', label: 'Endometrial / Uterine Cancer', category: 'Carcinoma' },
+  { value: 'bladder', label: 'Bladder Cancer', category: 'Carcinoma' },
+  { value: 'kidney_rcc', label: 'Kidney Cancer – RCC', category: 'Carcinoma' },
+  { value: 'pancreatic', label: 'Pancreatic Cancer', category: 'Carcinoma' },
+  { value: 'thyroid', label: 'Thyroid Cancer', category: 'Carcinoma' },
+  { value: 'stomach', label: 'Stomach / Gastric Cancer', category: 'Carcinoma' },
+  { value: 'esophageal', label: 'Esophageal Cancer', category: 'Carcinoma' },
+  { value: 'liver_hcc', label: 'Liver Cancer – HCC', category: 'Carcinoma' },
+  { value: 'head_neck', label: 'Head & Neck Cancer', category: 'Carcinoma' },
+  { value: 'skin_bcc', label: 'Skin Cancer – BCC', category: 'Carcinoma' },
+  { value: 'skin_scc', label: 'Skin Cancer – SCC', category: 'Carcinoma' },
+  // Melanoma
+  { value: 'melanoma', label: 'Melanoma', category: 'Melanoma' },
+  // Sarcomas
+  { value: 'osteosarcoma', label: 'Osteosarcoma (Bone)', category: 'Sarcoma' },
+  { value: 'soft_tissue', label: 'Soft Tissue Sarcoma', category: 'Sarcoma' },
+  { value: 'ewing', label: "Ewing's Sarcoma", category: 'Sarcoma' },
+  // Lymphomas & Leukemias
+  { value: 'hodgkin', label: "Hodgkin's Lymphoma", category: 'Lymphoma' },
+  { value: 'nhl', label: 'Non-Hodgkin Lymphoma', category: 'Lymphoma' },
+  { value: 'aml', label: 'Acute Myeloid Leukemia (AML)', category: 'Leukemia' },
+  { value: 'all', label: 'Acute Lymphoblastic Leukemia (ALL)', category: 'Leukemia' },
+  { value: 'cll', label: 'Chronic Lymphocytic Leukemia (CLL)', category: 'Leukemia' },
+  { value: 'cml', label: 'Chronic Myeloid Leukemia (CML)', category: 'Leukemia' },
+  // Brain & CNS
+  { value: 'glioblastoma', label: 'Glioblastoma (GBM)', category: 'Brain / CNS' },
+  { value: 'astrocytoma', label: 'Astrocytoma', category: 'Brain / CNS' },
+  { value: 'meningioma', label: 'Meningioma', category: 'Brain / CNS' },
+  { value: 'brain_mets', label: 'Brain Metastases', category: 'Brain / CNS' },
+  // Other
+  { value: 'multiple_myeloma', label: 'Multiple Myeloma', category: 'Other' },
+  { value: 'testicular', label: 'Testicular Cancer', category: 'Other' },
+  { value: 'neuroblastoma', label: 'Neuroblastoma', category: 'Other' },
+  { value: 'mesothelioma', label: 'Mesothelioma', category: 'Other' },
+  { value: 'other', label: 'Other / Not Listed', category: 'Other' },
+] as const;
+
+export const IMAGING_MODALITIES = [
+  { value: 'ct', label: 'CT Scan', description: 'Computed Tomography' },
+  { value: 'ct_contrast', label: 'CT with Contrast', description: 'Contrast-enhanced CT' },
+  { value: 'mri', label: 'MRI', description: 'Magnetic Resonance Imaging' },
+  { value: 'mri_contrast', label: 'MRI with Contrast', description: 'Contrast-enhanced MRI' },
+  { value: 'mri_dwi', label: 'MRI – DWI', description: 'Diffusion-Weighted Imaging' },
+  { value: 'pet_ct', label: 'PET-CT', description: 'Positron Emission Tomography + CT' },
+  { value: 'pet_mri', label: 'PET-MRI', description: 'Positron Emission Tomography + MRI' },
+  { value: 'xray', label: 'X-Ray / Radiograph', description: 'Plain film radiograph' },
+  { value: 'mammogram', label: 'Mammogram', description: 'Breast X-Ray' },
+  { value: 'ultrasound', label: 'Ultrasound', description: 'Sonography' },
+  { value: 'bone_scan', label: 'Bone Scan', description: 'Nuclear medicine bone imaging' },
+  { value: 'spect', label: 'SPECT', description: 'Single Photon Emission CT' },
+  { value: 'fluoroscopy', label: 'Fluoroscopy', description: 'Real-time X-ray' },
+  { value: 'pathology_slide', label: 'Pathology Slide', description: 'Histology / biopsy image' },
+  { value: 'dermoscopy', label: 'Dermoscopy', description: 'Skin lesion imaging' },
+  { value: 'endoscopy', label: 'Endoscopy / Colonoscopy', description: 'Scope imaging' },
+  { value: 'angiography', label: 'Angiography', description: 'Vascular imaging' },
+  { value: 'other', label: 'Other', description: 'Other imaging type' },
+] as const;
+
+export const CANCER_STAGES = [
+  { value: 'stage_0', label: 'Stage 0 – In Situ' },
+  { value: 'stage_1', label: 'Stage I – Localized' },
+  { value: 'stage_1a', label: 'Stage IA' },
+  { value: 'stage_1b', label: 'Stage IB' },
+  { value: 'stage_2', label: 'Stage II – Regional' },
+  { value: 'stage_2a', label: 'Stage IIA' },
+  { value: 'stage_2b', label: 'Stage IIB' },
+  { value: 'stage_3', label: 'Stage III – Extensive' },
+  { value: 'stage_3a', label: 'Stage IIIA' },
+  { value: 'stage_3b', label: 'Stage IIIB' },
+  { value: 'stage_3c', label: 'Stage IIIC' },
+  { value: 'stage_4', label: 'Stage IV – Metastatic' },
+  { value: 'recurrent', label: 'Recurrent' },
+  { value: 'unknown', label: 'Unknown / Not Staged' },
+] as const;
+
+export const BODY_REGIONS = [
+  { value: 'head', label: 'Head / Skull' },
+  { value: 'brain', label: 'Brain' },
+  { value: 'neck', label: 'Neck' },
+  { value: 'chest', label: 'Chest / Thorax' },
+  { value: 'lung_left', label: 'Left Lung' },
+  { value: 'lung_right', label: 'Right Lung' },
+  { value: 'breast_left', label: 'Left Breast' },
+  { value: 'breast_right', label: 'Right Breast' },
+  { value: 'heart', label: 'Heart / Pericardium' },
+  { value: 'abdomen', label: 'Abdomen' },
+  { value: 'liver', label: 'Liver' },
+  { value: 'pancreas', label: 'Pancreas' },
+  { value: 'spleen', label: 'Spleen' },
+  { value: 'kidney_left', label: 'Left Kidney' },
+  { value: 'kidney_right', label: 'Right Kidney' },
+  { value: 'adrenal', label: 'Adrenal Glands' },
+  { value: 'pelvis', label: 'Pelvis' },
+  { value: 'prostate', label: 'Prostate' },
+  { value: 'ovary', label: 'Ovary / Uterus' },
+  { value: 'bladder', label: 'Bladder' },
+  { value: 'colon', label: 'Colon / Rectum' },
+  { value: 'stomach', label: 'Stomach' },
+  { value: 'esophagus', label: 'Esophagus' },
+  { value: 'spine', label: 'Spine' },
+  { value: 'bone_other', label: 'Bone (Other)' },
+  { value: 'lymph_nodes', label: 'Lymph Nodes' },
+  { value: 'skin', label: 'Skin' },
+  { value: 'extremity_upper', label: 'Upper Extremity (Arm/Hand)' },
+  { value: 'extremity_lower', label: 'Lower Extremity (Leg/Foot)' },
+  { value: 'whole_body', label: 'Whole Body' },
+  { value: 'other', label: 'Other / Multiple' },
+] as const;
+
+export const TREATMENT_CONTEXT = [
+  { value: 'pre_treatment', label: 'Pre-Treatment / Baseline' },
+  { value: 'during_chemo', label: 'During Chemotherapy' },
+  { value: 'during_radiation', label: 'During Radiation' },
+  { value: 'during_immunotherapy', label: 'During Immunotherapy' },
+  { value: 'during_targeted', label: 'During Targeted Therapy' },
+  { value: 'post_treatment', label: 'Post-Treatment Follow-up' },
+  { value: 'surveillance', label: 'Surveillance / Monitoring' },
+  { value: 'recurrence', label: 'Recurrence Evaluation' },
+  { value: 'diagnostic', label: 'Initial Diagnostic Workup' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export const FILE_FORMATS = [
+  '.dcm', '.dicom', '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.pdf', '.nii', '.nii.gz'
+];
+
+export const ACCEPTED_MIME_TYPES = {
+  'application/dicom': ['.dcm', '.dicom'],
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/png': ['.png'],
+  'image/tiff': ['.tiff', '.tif'],
+  'application/pdf': ['.pdf'],
+};
