@@ -37,7 +37,7 @@ export default function Navbar() {
           </div>
           <div className="hidden sm:block">
             <div className="text-sm font-bold tracking-widest uppercase" style={{ color: '#00d4ff', letterSpacing: '0.12em' }}>
-              CancerProgressionAtlas
+              Cancer Progression Atlas
             </div>
             <div className="text-xs mono" style={{ color: '#3d5a73', letterSpacing: '0.08em' }}>
               Open Imaging Database

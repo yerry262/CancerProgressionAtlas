@@ -1,0 +1,27 @@
+{
+  "name": "CancerProgressionAtlas",
+  "short_name": "CPA",
+  "description": "Open-source crowdsourced cancer imaging database built by patients.",
+  "start_url": "/CancerProgressionAtlas/",
+  "display": "standalone",
+  "background_color": "#050a14",
+  "theme_color": "#050a14",
+  "icons": [
+    {
+      "src": "/CancerProgressionAtlas/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/CancerProgressionAtlas/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/CancerProgressionAtlas/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

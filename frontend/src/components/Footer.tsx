@@ -13,7 +13,7 @@ export default function Footer() {
                 <Dna className="w-5 h-5" style={{ color: '#00d4ff' }} />
               </div>
               <span className="font-bold text-sm tracking-widest uppercase" style={{ color: '#00d4ff' }}>
-                CancerProgressionAtlas
+                Cancer Progression Atlas
               </span>
             </div>
             <p className="text-sm leading-relaxed mb-4" style={{ color: '#6a8fa8' }}>
@@ -71,13 +71,13 @@ export default function Footer() {
 
         <div className="flex flex-col sm:flex-row items-center justify-between pt-8 gap-4" style={{ borderTop: '1px solid rgba(26, 58, 92, 0.3)' }}>
           <p className="text-xs mono" style={{ color: '#3d5a73' }}>
-            © 2025 CancerProgressionAtlas. Open Source under CC BY 4.0 & MIT.
+            © 2025 Cancer Progression Atlas. Open Source under CC BY 4.0 &amp; MIT.
           </p>
           <a
-            href="https://github.com/yerry262/cancerprogressionatlas"
+            href="https://github.com/yerry262/CancerProgressionAtlas"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg transition-all"
+            className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg transition-all hover:border-[rgba(0,212,255,0.4)] hover:text-[#c8dff0]"
             style={{ color: '#6a8fa8', border: '1px solid rgba(26, 58, 92, 0.5)' }}
           >
             <GitFork className="w-4 h-4" />
