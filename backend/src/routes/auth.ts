@@ -1,13 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db/pool';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET ?? 'change-me-in-production';
-const JWT_EXPIRES = process.env.JWT_EXPIRES ?? '7d';
+const JWT_EXPIRES = (process.env.JWT_EXPIRES ?? '7d') as SignOptions['expiresIn'];
 const SALT_ROUNDS = 12;
 
 // ============================================================
