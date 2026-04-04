@@ -1,85 +1,56 @@
 import { useState } from 'react';
-import { Search, Download, ExternalLink, Database, SlidersHorizontal } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Search, Download, ExternalLink, Database, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import Badge from '../components/ui/Badge';
 import Select from '../components/ui/Select';
+import { DatasetCardSkeleton } from '../components/ui/Skeleton';
 import { CANCER_TYPES, IMAGING_MODALITIES, CANCER_STAGES } from '../data/medical';
+import { submissionService, type DatasetEntry } from '../services/submission.service';
 
-// Placeholder entries until backend is connected
-const MOCK_ENTRIES = [
-  {
-    id: 'CPA-0001',
-    cancerTypeLabel: 'Breast Cancer',
-    imagingModalityLabel: 'MRI with Contrast',
-    imagingDate: '2023-04',
-    bodyRegionLabel: 'Left Breast',
-    cancerStage: 'Stage IIA',
-    treatmentContext: 'Pre-Treatment / Baseline',
-    fileCount: 3,
-    approvedAt: '2025-01-10',
-  },
-  {
-    id: 'CPA-0002',
-    cancerTypeLabel: 'Lung Cancer – NSCLC',
-    imagingModalityLabel: 'PET-CT',
-    imagingDate: '2022-11',
-    bodyRegionLabel: 'Right Lung',
-    cancerStage: 'Stage IIIB',
-    treatmentContext: 'During Chemotherapy',
-    fileCount: 12,
-    approvedAt: '2025-01-11',
-  },
-  {
-    id: 'CPA-0003',
-    cancerTypeLabel: 'Glioblastoma (GBM)',
-    imagingModalityLabel: 'MRI – DWI',
-    imagingDate: '2024-03',
-    bodyRegionLabel: 'Brain',
-    cancerStage: 'Stage IV – Metastatic',
-    treatmentContext: 'Post-Treatment Follow-up',
-    fileCount: 7,
-    approvedAt: '2025-01-12',
-  },
-  {
-    id: 'CPA-0004',
-    cancerTypeLabel: 'Colorectal Cancer',
-    imagingModalityLabel: 'CT Scan',
-    imagingDate: '2023-08',
-    bodyRegionLabel: 'Colon / Rectum',
-    cancerStage: 'Stage II – Regional',
-    treatmentContext: 'Surveillance / Monitoring',
-    fileCount: 4,
-    approvedAt: '2025-01-13',
-  },
-  {
-    id: 'CPA-0005',
-    cancerTypeLabel: 'Melanoma',
-    imagingModalityLabel: 'Dermoscopy',
-    imagingDate: '2024-06',
-    bodyRegionLabel: 'Skin',
-    cancerStage: 'Stage I – Localized',
-    treatmentContext: 'Initial Diagnostic Workup',
-    fileCount: 8,
-    approvedAt: '2025-01-14',
-  },
-  {
-    id: 'CPA-0006',
-    cancerTypeLabel: 'Prostate Cancer',
-    imagingModalityLabel: 'MRI with Contrast',
-    imagingDate: '2022-09',
-    bodyRegionLabel: 'Prostate',
-    cancerStage: 'Stage IIB',
-    treatmentContext: 'Pre-Treatment / Baseline',
-    fileCount: 5,
-    approvedAt: '2025-01-15',
-  },
-];
-
-const modalityColor = (m: string): 'cyan' | 'teal' | 'blue' | 'muted' => {
-  if (m.includes('MRI')) return 'cyan';
-  if (m.includes('PET')) return 'teal';
-  if (m.includes('CT')) return 'blue';
-  return 'muted';
+const MODALITY_BADGE: Record<string, 'cyan' | 'teal' | 'blue' | 'muted'> = {
+  mri: 'cyan', mri_contrast: 'cyan', mri_dwi: 'cyan',
+  pet_ct: 'teal', pet_mri: 'teal',
+  ct: 'blue', ct_contrast: 'blue',
 };
+
+function EntryCard({ entry }: { entry: DatasetEntry }) {
+  const modalityLabel = IMAGING_MODALITIES.find(m => m.value === entry.imaging_modality)?.label ?? entry.imaging_modality;
+  const cancerLabel = CANCER_TYPES.find(c => c.value === entry.cancer_type)?.label ?? entry.cancer_type;
+  const stageLabel = CANCER_STAGES.find(s => s.value === entry.cancer_stage)?.label ?? entry.cancer_stage;
+  const variant = MODALITY_BADGE[entry.imaging_modality] ?? 'muted';
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 rounded-2xl glass transition-all duration-200 hover:border-glow cursor-pointer">
+      <div className="flex-shrink-0">
+        <p className="text-xs mono font-bold" style={{ color: '#00d4ff' }}>CPA-{entry.id.slice(0,6).toUpperCase()}</p>
+        <p className="text-xs mt-0.5" style={{ color: '#3d5a73' }}>{entry.approved_at?.slice(0,10)}</p>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 mb-1.5">
+          <span className="font-semibold text-sm" style={{ color: '#c8dff0' }}>{cancerLabel}</span>
+          <Badge variant={variant}>{modalityLabel}</Badge>
+          {stageLabel && <Badge variant="muted">{stageLabel}</Badge>}
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs" style={{ color: '#6a8fa8' }}>
+          <span>{entry.body_region}</span>
+          <span>{entry.imaging_date}</span>
+          {entry.treatment_context && <span>{entry.treatment_context}</span>}
+          <span>{entry.file_count} file{entry.file_count !== 1 ? 's' : ''}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
+          style={{ border: '1px solid rgba(0,212,255,0.25)', color: '#00d4ff', background: 'rgba(0,212,255,0.05)' }}>
+          <ExternalLink className="w-3 h-3" /> View
+        </button>
+        <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
+          style={{ border: '1px solid rgba(26,58,92,0.5)', color: '#6a8fa8', background: 'transparent' }}>
+          <Download className="w-3 h-3" /> Download
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function Dataset() {
   const [search, setSearch] = useState('');
@@ -87,167 +58,129 @@ export default function Dataset() {
   const [filterModality, setFilterModality] = useState('');
   const [filterStage, setFilterStage] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [page, setPage] = useState(1);
+  const LIMIT = 20;
 
-  const filtered = MOCK_ENTRIES.filter((e) => {
-    const q = search.toLowerCase();
-    if (q && !e.cancerTypeLabel.toLowerCase().includes(q) && !e.imagingModalityLabel.toLowerCase().includes(q) && !e.bodyRegionLabel.toLowerCase().includes(q)) return false;
-    if (filterCancer && !e.cancerTypeLabel.toLowerCase().includes(filterCancer.toLowerCase())) return false;
-    if (filterModality && !e.imagingModalityLabel.toLowerCase().includes(filterModality.toLowerCase())) return false;
-    if (filterStage && e.cancerStage !== filterStage) return false;
-    return true;
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['dataset', page, search, filterCancer, filterModality, filterStage],
+    queryFn: () => submissionService.getDataset({
+      page, limit: LIMIT,
+      ...(search && { search }),
+      ...(filterCancer && { cancerType: filterCancer }),
+      ...(filterModality && { modality: filterModality }),
+      ...(filterStage && { stage: filterStage }),
+    }),
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
+
+  const entries: DatasetEntry[] = data?.entries ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / LIMIT);
 
   return (
     <div className="min-h-screen pt-28 pb-20 px-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <p className="text-xs uppercase tracking-widest mono mb-2" style={{ color: '#00d4ff' }}>Open Dataset</p>
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: '#c8dff0' }}>
-            Browse Imaging Dataset
-          </h1>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: '#c8dff0' }}>Browse Imaging Dataset</h1>
           <p className="text-sm" style={{ color: '#6a8fa8' }}>
-            Anonymized, community-contributed cancer imaging. Free for research under CC BY 4.0.
+            Anonymized, patient-contributed cancer imaging. Free for research use under CC BY 4.0.
           </p>
         </div>
 
         {/* Stats strip */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
-            { label: 'Total Entries', value: MOCK_ENTRIES.length, note: 'sample data' },
-            { label: 'Cancer Types', value: new Set(MOCK_ENTRIES.map(e => e.cancerTypeLabel)).size },
-            { label: 'Total Files', value: MOCK_ENTRIES.reduce((a, e) => a + e.fileCount, 0) },
-          ].map(({ label, value, note }) => (
+            { label: 'Total Entries', value: isLoading ? '—' : total.toLocaleString() },
+            { label: 'Cancer Types', value: '37+' },
+            { label: 'Imaging Modalities', value: '18' },
+          ].map(({ label, value }) => (
             <div key={label} className="p-4 rounded-xl glass text-center">
               <p className="text-2xl font-black mono" style={{ color: '#00d4ff' }}>{value}</p>
               <p className="text-xs uppercase tracking-widest mt-1" style={{ color: '#3d5a73' }}>{label}</p>
-              {note && <p className="text-xs mt-0.5" style={{ color: '#3d5a73' }}>({note})</p>}
             </div>
           ))}
         </div>
 
-        {/* Search & filter bar */}
+        {/* Search & filters */}
         <div className="mb-6 space-y-4">
           <div className="flex gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#3d5a73' }} />
-              <input
-                type="text"
-                placeholder="Search cancer type, modality, body region…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+              <input type="text" placeholder="Search cancer type, modality, body region…"
+                value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 className="w-full pl-10 pr-4 py-3 rounded-xl text-sm"
-                style={{ background: 'rgba(16, 32, 56, 0.8)', border: '1px solid rgba(26, 58, 92, 0.8)', color: '#c8dff0' }}
-              />
+                style={{ background: 'rgba(16,32,56,0.8)', border: '1px solid rgba(26,58,92,0.8)', color: '#c8dff0' }} />
             </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
+            <button onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
-              style={{
-                background: showFilters ? 'rgba(0, 212, 255, 0.1)' : 'rgba(16, 32, 56, 0.8)',
-                border: showFilters ? '1px solid rgba(0, 212, 255, 0.3)' : '1px solid rgba(26, 58, 92, 0.8)',
-                color: showFilters ? '#00d4ff' : '#6a8fa8',
-              }}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              Filters
+              style={{ background: showFilters ? 'rgba(0,212,255,0.1)' : 'rgba(16,32,56,0.8)', border: showFilters ? '1px solid rgba(0,212,255,0.3)' : '1px solid rgba(26,58,92,0.8)', color: showFilters ? '#00d4ff' : '#6a8fa8' }}>
+              <SlidersHorizontal className="w-4 h-4" /> Filters
             </button>
-            <button
-              className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold"
-              style={{ border: '1px solid rgba(26, 58, 92, 0.5)', color: '#6a8fa8', background: 'transparent' }}
-            >
-              <Download className="w-4 h-4" />
-              Export CSV
+            <button className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold"
+              style={{ border: '1px solid rgba(26,58,92,0.5)', color: '#6a8fa8', background: 'transparent' }}>
+              <Download className="w-4 h-4" /> CSV
             </button>
           </div>
-
           {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 rounded-xl animate-fadeInUp" style={{ background: 'rgba(13, 26, 46, 0.6)', border: '1px solid rgba(26, 58, 92, 0.5)' }}>
-              <Select
-                label="Cancer Type"
-                value={filterCancer}
-                onChange={setFilterCancer}
-                options={[{ value: '', label: 'All Types' }, ...CANCER_TYPES as unknown as { value: string; label: string }[]]}
-                groupByCategory
-              />
-              <Select
-                label="Imaging Modality"
-                value={filterModality}
-                onChange={setFilterModality}
-                options={[{ value: '', label: 'All Modalities' }, ...IMAGING_MODALITIES as unknown as { value: string; label: string }[]]}
-              />
-              <Select
-                label="Cancer Stage"
-                value={filterStage}
-                onChange={setFilterStage}
-                options={[{ value: '', label: 'All Stages' }, ...CANCER_STAGES as unknown as { value: string; label: string }[]]}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 rounded-xl animate-fadeInUp"
+              style={{ background: 'rgba(13,26,46,0.6)', border: '1px solid rgba(26,58,92,0.5)' }}>
+              <Select label="Cancer Type" value={filterCancer} onChange={(v) => { setFilterCancer(v); setPage(1); }}
+                options={[{ value: '', label: 'All Types' }, ...CANCER_TYPES as unknown as { value: string; label: string; category?: string }[]]}
+                groupByCategory />
+              <Select label="Imaging Modality" value={filterModality} onChange={(v) => { setFilterModality(v); setPage(1); }}
+                options={[{ value: '', label: 'All Modalities' }, ...IMAGING_MODALITIES as unknown as { value: string; label: string }[]]} />
+              <Select label="Cancer Stage" value={filterStage} onChange={(v) => { setFilterStage(v); setPage(1); }}
+                options={[{ value: '', label: 'All Stages' }, ...CANCER_STAGES as unknown as { value: string; label: string }[]]} />
             </div>
           )}
         </div>
 
-        {/* Results */}
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm" style={{ color: '#6a8fa8' }}>
-            Showing <span style={{ color: '#c8dff0' }}>{filtered.length}</span> entries
+            {isLoading ? 'Loading…' : <><span style={{ color: '#c8dff0' }}>{total.toLocaleString()}</span> entries</>}
           </p>
-          <Badge variant="cyan">Preview Mode – Sample Data</Badge>
+          <Badge variant="cyan">CC BY 4.0 — Open for Research</Badge>
         </div>
 
         <div className="space-y-3">
-          {filtered.length === 0 ? (
+          {isLoading && Array.from({ length: 6 }).map((_, i) => <DatasetCardSkeleton key={i} />)}
+          {isError && (
+            <div className="flex gap-3 p-5 rounded-2xl" style={{ background: 'rgba(255,61,90,0.05)', border: '1px solid rgba(255,61,90,0.2)' }}>
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#ff3d5a' }} />
+              <div>
+                <p className="font-semibold text-sm mb-1" style={{ color: '#c8dff0' }}>Could not load dataset</p>
+                <p className="text-sm" style={{ color: '#6a8fa8' }}>The API may not be running yet. Start the backend or deploy to Railway to see live data.</p>
+              </div>
+            </div>
+          )}
+          {!isLoading && !isError && entries.length === 0 && (
             <div className="text-center py-20">
               <Database className="w-12 h-12 mx-auto mb-4" style={{ color: '#3d5a73' }} />
-              <p style={{ color: '#6a8fa8' }}>No entries match your filters.</p>
+              <p className="font-semibold mb-1" style={{ color: '#c8dff0' }}>No entries yet</p>
+              <p className="text-sm" style={{ color: '#6a8fa8' }}>Be the first to contribute imaging to the dataset.</p>
             </div>
-          ) : (
-            filtered.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 rounded-2xl glass transition-all duration-200 hover:border-glow group cursor-pointer"
-              >
-                {/* ID */}
-                <div className="flex-shrink-0">
-                  <p className="text-xs mono font-bold" style={{ color: '#00d4ff' }}>{entry.id}</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#3d5a73' }}>Added {entry.approvedAt}</p>
-                </div>
-
-                {/* Main info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className="font-semibold text-sm" style={{ color: '#c8dff0' }}>{entry.cancerTypeLabel}</span>
-                    <Badge variant={modalityColor(entry.imagingModalityLabel)}>{entry.imagingModalityLabel}</Badge>
-                    {entry.cancerStage && <Badge variant="muted">{entry.cancerStage}</Badge>}
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs" style={{ color: '#6a8fa8' }}>
-                    <span>{entry.bodyRegionLabel}</span>
-                    <span>{entry.imagingDate}</span>
-                    <span>{entry.treatmentContext}</span>
-                    <span>{entry.fileCount} file{entry.fileCount !== 1 ? 's' : ''}</span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-                    style={{ border: '1px solid rgba(0, 212, 255, 0.25)', color: '#00d4ff', background: 'rgba(0, 212, 255, 0.05)' }}
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    View
-                  </button>
-                  <button
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-                    style={{ border: '1px solid rgba(26, 58, 92, 0.5)', color: '#6a8fa8', background: 'transparent' }}
-                  >
-                    <Download className="w-3 h-3" />
-                    Download
-                  </button>
-                </div>
-              </div>
-            ))
           )}
+          {entries.map(entry => <EntryCard key={entry.id} entry={entry} />)}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-8">
+            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+              className="px-4 py-2 rounded-lg text-sm transition-all"
+              style={{ border: '1px solid rgba(26,58,92,0.5)', color: page === 1 ? '#3d5a73' : '#c8dff0', cursor: page === 1 ? 'not-allowed' : 'pointer' }}>
+              ← Prev
+            </button>
+            <span className="text-sm mono" style={{ color: '#6a8fa8' }}>Page {page} of {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              className="px-4 py-2 rounded-lg text-sm transition-all"
+              style={{ border: '1px solid rgba(26,58,92,0.5)', color: page === totalPages ? '#3d5a73' : '#c8dff0', cursor: page === totalPages ? 'not-allowed' : 'pointer' }}>
+              Next →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

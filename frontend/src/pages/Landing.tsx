@@ -1,15 +1,29 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
-  Upload, Database, Brain, Shield, Users, ArrowRight,
+  Upload, Database, Brain, Shield, ArrowRight,
   Microscope, Scan, Activity, ChevronRight, Lock, Globe
 } from 'lucide-react';
+import { submissionService } from '../services/submission.service';
 
-const STATS = [
-  { label: 'Imaging Submissions', value: '0', suffix: '', live: true },
-  { label: 'Cancer Types Covered', value: '37', suffix: '+' },
-  { label: 'Imaging Modalities', value: '18', suffix: '' },
-  { label: 'Countries', value: '0', suffix: '', live: true },
-];
+function useStats() {
+  return useQuery({
+    queryKey: ['stats'],
+    queryFn: submissionService.getStats,
+    staleTime: 60_000,
+    retry: false,
+  });
+}
+
+function AnimatedCount({ value }: { value: number | undefined }) {
+  if (value === undefined) {
+    return (
+      <span className="inline-block w-12 h-9 rounded"
+        style={{ background: 'rgba(0,212,255,0.1)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+    );
+  }
+  return <>{value.toLocaleString()}</>;
+}
 
 const HOW_IT_WORKS = [
   {
@@ -65,13 +79,14 @@ const FEATURES = [
     desc: 'Upload imaging from multiple time points to capture cancer progression across treatment.',
   },
   {
-    icon: Users,
+    icon: Activity,
     title: 'Community Driven',
-    desc: "Built by patients, for patients. Every submission helps future patients get diagnosed earlier.",
+    desc: 'Built by patients, for patients. Every submission helps future patients get diagnosed earlier.',
   },
 ];
 
 export default function Landing() {
+  const { data: stats } = useStats();
   return (
     <div className="min-h-screen">
       {/* Hero */}
@@ -147,11 +162,16 @@ export default function Landing() {
       {/* Stats bar */}
       <section style={{ background: 'rgba(13, 26, 46, 0.5)', borderTop: '1px solid rgba(26, 58, 92, 0.5)', borderBottom: '1px solid rgba(26, 58, 92, 0.5)' }}>
         <div className="max-w-5xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8">
-          {STATS.map(({ label, value, suffix, live }) => (
+          {[
+            { label: 'Imaging Submissions', value: stats?.totalSubmissions, suffix: '', live: true },
+            { label: 'Cancer Types Covered', value: stats?.cancerTypes ?? 37, suffix: '+' },
+            { label: 'Imaging Modalities', value: 18, suffix: '' },
+            { label: 'Countries', value: stats?.countries ?? 0, suffix: '', live: true },
+          ].map(({ label, value, suffix, live }) => (
             <div key={label} className="text-center">
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-4xl font-black mono" style={{ color: '#00d4ff' }}>
-                  {value}
+                  <AnimatedCount value={value} />
                 </span>
                 <span className="text-xl font-bold" style={{ color: '#00d4ff' }}>{suffix}</span>
                 {live && (
