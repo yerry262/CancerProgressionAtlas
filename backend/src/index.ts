@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import submissionsRouter from './routes/submissions';
+import authRouter from './routes/auth';
 
 const app = express();
 const PORT = parseInt(process.env.PORT ?? '4000', 10);
@@ -51,6 +52,7 @@ app.get('/api/stats', async (_req, res) => {
 });
 
 // Routes
+app.use('/api/auth', authRouter);
 app.use('/api/submissions', submissionsRouter);
 
 // Global error handler
