@@ -55,6 +55,7 @@ CancerProgressionAtlas/
 │   │   │   ├── Upload.tsx           # 4-step guided upload wizard
 │   │   │   ├── Dataset.tsx          # Public dataset browser
 │   │   │   ├── Submissions.tsx      # User's submission dashboard
+│   │   │   ├── Admin.tsx            # Admin review queue (approve/reject)
 │   │   │   ├── About.tsx            # Research mission & data governance
 │   │   │   ├── Login.tsx
 │   │   │   ├── Register.tsx
@@ -72,10 +73,12 @@ CancerProgressionAtlas/
 │   │   │   ├── migrate.ts           # Idempotent schema auto-migration on startup
 │   │   │   └── schema.sql           # Full DB schema (users, submissions, files)
 │   │   ├── middleware/
-│   │   │   └── upload.ts            # Multer file handler (500MB, DICOM-aware)
+│   │   │   ├── upload.ts            # Multer file handler (500MB, DICOM-aware)
+│   │   │   └── adminAuth.ts         # JWT + ADMIN_EMAILS role check
 │   │   └── routes/
 │   │       ├── auth.ts              # Register, login, JWT, anonymous session
-│   │       └── submissions.ts       # Upload, list, public dataset endpoints
+│   │       ├── submissions.ts       # Upload, list, public dataset endpoints
+│   │       └── admin.ts             # Admin review queue (approve/reject)
 │   └── ...
 │
 ├── .github/
@@ -126,6 +129,15 @@ CancerProgressionAtlas/
 - Anonymous contributions with session token (no account needed)
 - User menu in navbar with logout
 - Account not required for any contribution
+
+### Admin Review Dashboard
+- Gated by `ADMIN_EMAILS` environment variable — no code changes needed to add admins
+- **Pending queue** — submissions listed oldest-first; live count badge on the tab
+- **Expandable cards** — full metadata, treatment context, clinical notes per submission
+- **Approve** with one click; **Reject** with a mandatory reason (shown to the contributor on their dashboard)
+- **Tabs** for Pending / Approved / Rejected history
+- Admin link appears in the navbar only for accounts whose email matches `ADMIN_EMAILS`
+- Non-admins see an access-denied screen; unauthenticated users are redirected to login
 
 ### Privacy & Security
 - All 18 HIPAA Safe Harbor identifiers stripped from DICOM files before storage
@@ -190,6 +202,8 @@ JWT_SECRET=your-long-random-secret-here
 JWT_EXPIRES=7d
 ALLOWED_ORIGINS=http://localhost:3000
 UPLOAD_DIR=./uploads
+# Comma-separated emails that can access /admin. Keep out of version control.
+ADMIN_EMAILS=your@email.com
 ```
 
 **Frontend** (`frontend/.env.local`) — only needed in production:
@@ -217,6 +231,7 @@ VITE_API_URL=https://your-api.up.railway.app/api
 4. Set environment variables in the Railway dashboard:
    - `JWT_SECRET` — generate with `openssl rand -base64 32`
    - `ALLOWED_ORIGINS` — your GitHub Pages URL (e.g. `https://yerry262.github.io`)
+   - `ADMIN_EMAILS` — your email address (grants access to `/admin` review panel)
    - `NODE_ENV=production` (Railway may set this automatically)
 5. Railway auto-detects `railway.toml` and deploys the `backend/` directory
 6. **No manual schema step** — the API applies `schema.sql` automatically on first startup
@@ -239,6 +254,10 @@ VITE_API_URL=https://your-api.up.railway.app/api
 | `GET` | `/api/submissions/dataset` | Public approved dataset (filterable, paginated) |
 | `GET` | `/api/health` | Health check (includes DB connectivity status) |
 | `GET` | `/api/stats` | Live dataset statistics |
+| `GET` | `/api/admin/stats` | Queue counts — pending / approved / rejected (admin only) |
+| `GET` | `/api/admin/submissions` | Paginated submission queue, filterable by status (admin only) |
+| `POST` | `/api/admin/submissions/:id/approve` | Approve a submission (admin only) |
+| `POST` | `/api/admin/submissions/:id/reject` | Reject with reason (admin only) |
 
 ---
 
