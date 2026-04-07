@@ -16,6 +16,7 @@ export interface AuthUser {
   email: string;
   displayName?: string;
   createdAt: string;
+  isAdmin?: boolean;
 }
 
 export interface AuthResponse {

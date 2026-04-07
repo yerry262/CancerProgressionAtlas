@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import submissionsRouter from './routes/submissions';
 import authRouter from './routes/auth';
+import adminRouter from './routes/admin';
 import { runMigrations } from './db/migrate';
 import pool from './db/pool';
 
@@ -60,6 +61,7 @@ app.get('/api/stats', async (_req, res) => {
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/submissions', submissionsRouter);
+app.use('/api/admin', adminRouter);
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

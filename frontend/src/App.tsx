@@ -15,6 +15,7 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Consent from './pages/Consent';
 import License from './pages/License';
+import Admin from './pages/Admin';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +62,7 @@ export default function App() {
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/consent" element={<Consent />} />
                 <Route path="/license" element={<License />} />
+                <Route path="/admin" element={<Admin />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

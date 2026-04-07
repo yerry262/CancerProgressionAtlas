@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Upload, Menu, X, Dna, LogIn, LogOut, User, ChevronDown } from 'lucide-react';
+import { Upload, Menu, X, Dna, LogIn, LogOut, User, ChevronDown, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 
@@ -13,7 +13,7 @@ const links = [
 export default function Navbar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, isAdmin, user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -92,6 +92,13 @@ export default function Navbar() {
                     style={{ color: '#c8dff0', borderBottom: '1px solid rgba(26, 58, 92, 0.4)' }}>
                     <User className="w-4 h-4" style={{ color: '#00d4ff' }} /> My Submissions
                   </Link>
+                  {isAdmin && (
+                    <Link to="/admin" onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm transition-all hover:bg-white/5"
+                      style={{ color: '#ffab00', borderBottom: '1px solid rgba(26, 58, 92, 0.4)' }}>
+                      <ShieldCheck className="w-4 h-4" /> Admin Panel
+                    </Link>
+                  )}
                   <button onClick={handleLogout}
                     className="w-full flex items-center gap-2 px-4 py-3 text-sm transition-all hover:bg-white/5"
                     style={{ color: '#ff3d5a' }}>
@@ -146,6 +153,13 @@ export default function Navbar() {
                 className="block px-4 py-3 text-sm rounded-lg" style={{ color: '#6a8fa8' }}>
                 My Submissions
               </Link>
+              {isAdmin && (
+                <Link to="/admin" onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 px-4 py-3 text-sm rounded-lg font-semibold"
+                  style={{ color: '#ffab00', background: 'rgba(255,171,0,0.05)', border: '1px solid rgba(255,171,0,0.15)' }}>
+                  <ShieldCheck className="w-4 h-4" /> Admin Panel
+                </Link>
+              )}
               <button onClick={() => { handleLogout(); setOpen(false); }}
                 className="w-full text-left px-4 py-3 text-sm rounded-lg" style={{ color: '#ff3d5a' }}>
                 Sign Out

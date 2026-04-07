@@ -126,6 +126,10 @@ router.get('/me', async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Not authenticated.' });
   }
 
+  const adminEmails = new Set(
+    (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+  );
+
   try {
     const token = authHeader.slice(7);
     const payload = jwt.verify(token, JWT_SECRET) as { sub: string };
@@ -135,7 +139,13 @@ router.get('/me', async (req: Request, res: Response) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'User not found.' });
     const u = rows[0];
-    return res.json({ id: u.id, email: u.email, displayName: u.display_name, createdAt: u.created_at });
+    return res.json({
+      id: u.id,
+      email: u.email,
+      displayName: u.display_name,
+      createdAt: u.created_at,
+      isAdmin: adminEmails.has(u.email.toLowerCase()),
+    });
   } catch {
     return res.status(401).json({ error: 'Invalid or expired token.' });
   }
