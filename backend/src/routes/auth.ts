@@ -3,7 +3,17 @@ import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcrypt';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import rateLimit from 'express-rate-limit';
 import pool from '../db/pool';
+
+// Max 10 attempts per IP per 15 minutes on auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again in 15 minutes.' },
+});
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET ?? 'change-me-in-production';
@@ -15,6 +25,7 @@ const SALT_ROUNDS = 12;
 // ============================================================
 router.post(
   '/register',
+  authLimiter,
   [
     body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
     body('password')
@@ -64,6 +75,7 @@ router.post(
 // ============================================================
 router.post(
   '/login',
+  authLimiter,
   [
     body('email').isEmail().normalizeEmail(),
     body('password').notEmpty(),

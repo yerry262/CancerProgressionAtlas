@@ -1,4 +1,4 @@
-import api from './api';
+import api, { uploadApi } from './api';
 import type { UploadFormData } from '../types';
 
 export interface SubmissionResponse {
@@ -66,7 +66,7 @@ export const submissionService = {
       fd.append('files', file);
     }
 
-    const { data } = await api.post<SubmissionResponse>('/submissions', fd, {
+    const { data } = await uploadApi.post<SubmissionResponse>('/submissions', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (e) => {
         if (onProgress && e.total) {

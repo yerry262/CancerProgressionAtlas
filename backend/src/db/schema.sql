@@ -12,10 +12,22 @@ CREATE TABLE IF NOT EXISTS users (
   email           TEXT UNIQUE NOT NULL,
   password_hash   TEXT NOT NULL,
   display_name    TEXT,
+  role            TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
   is_verified     BOOLEAN NOT NULL DEFAULT FALSE,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Add role column to existing deployments that pre-date this migration
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'role'
+  ) THEN
+    ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'
+      CHECK (role IN ('user', 'admin'));
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 

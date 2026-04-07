@@ -5,6 +5,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import submissionsRouter from './routes/submissions';
 import authRouter from './routes/auth';
+import { runMigrations } from './db/migrate';
+import pool from './db/pool';
 
 const app = express();
 const PORT = parseInt(process.env.PORT ?? '4000', 10);
@@ -29,15 +31,19 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check — includes DB connectivity
+app.get('/api/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected', timestamp: new Date().toISOString() });
+  } catch {
+    res.status(503).json({ status: 'degraded', db: 'unavailable', timestamp: new Date().toISOString() });
+  }
 });
 
 // Stats endpoint
 app.get('/api/stats', async (_req, res) => {
   try {
-    const { default: pool } = await import('./db/pool');
     const [subCount, typeCount] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM submissions WHERE status = $1', ['approved']),
       pool.query('SELECT COUNT(DISTINCT cancer_type) FROM submissions WHERE status = $1', ['approved']),
@@ -61,10 +67,25 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: err.message ?? 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`[CancerProgressionAtlas API] Listening on port ${PORT}`);
-  console.log(`  Environment: ${process.env.NODE_ENV ?? 'development'}`);
-  console.log(`  DB: ${process.env.DATABASE_URL ? 'connected' : 'not configured (set DATABASE_URL)'}`);
+async function start() {
+  try {
+    await runMigrations();
+  } catch (err) {
+    console.error('[DB] Migration failed — server will start without schema guarantee:', err);
+    // Don't crash: Railway may start the API before the DB is ready on first deploy.
+    // The DB pool will retry on the first real request.
+  }
+
+  app.listen(PORT, () => {
+    console.log(`[CancerProgressionAtlas API] Listening on port ${PORT}`);
+    console.log(`  Environment: ${process.env.NODE_ENV ?? 'development'}`);
+    console.log(`  DB: ${process.env.DATABASE_URL ? 'configured' : 'not configured (set DATABASE_URL)'}`);
+  });
+}
+
+start().catch((err) => {
+  console.error('Fatal startup error:', err);
+  process.exit(1);
 });
 
 export default app;

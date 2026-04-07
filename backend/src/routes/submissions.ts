@@ -1,8 +1,18 @@
 import { Router, Request, Response } from 'express';
-import { body, query, validationResult } from 'express-validator';
+import { body, validationResult } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db/pool';
 import { uploadMiddleware } from '../middleware/upload';
+
+/**
+ * Normalizes a date value from HTML month inputs (YYYY-MM) to a full ISO date
+ * (YYYY-MM-01) that PostgreSQL's DATE type accepts. Full dates are passed through.
+ */
+function normalizeDate(val: string | undefined | null): string | null {
+  if (!val) return null;
+  if (/^\d{4}-\d{2}$/.test(val)) return `${val}-01`;
+  return val;
+}
 
 const router = Router();
 
@@ -51,9 +61,9 @@ router.post(
           sessionToken,
           cancerType,
           cancerStage || null,
-          diagnosisDate || null,
+          normalizeDate(diagnosisDate),
           imagingModality,
-          imagingDate,
+          normalizeDate(imagingDate),
           bodyRegion,
           treatmentContext || null,
           notes || null,
