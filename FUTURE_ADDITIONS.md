@@ -26,7 +26,7 @@ This document covers planned features, enhancements, and long-term directions fo
 ### 🛡️ Admin Review Dashboard
 **Why:** Every submission must be manually reviewed before entering the public dataset.
 **What to build:**
-- `/admin` route (JWT role-based: `role = 'admin'` on users table)
+- `/admin` route (JWT role-based: `role = 'admin'` on users table — ✅ `role` column added to schema)
 - Queue view: pending submissions listed oldest-first
 - Per-submission actions: Approve, Reject (with reason), Flag for expert review
 - Bulk approve for clearly compliant submissions
@@ -268,7 +268,7 @@ This document covers planned features, enhancements, and long-term directions fo
 - API response caching: Redis for stats endpoint and public dataset queries
 
 ### Security Hardening
-- Rate limiting on auth endpoints: `express-rate-limit` (max 10 login attempts per IP per 15 min)
+- ~~Rate limiting on auth endpoints: `express-rate-limit` (max 10 login attempts per IP per 15 min)~~ ✅ Done
 - CSRF protection for state-changing endpoints
 - Content Security Policy headers via Helmet
 - Dependency vulnerability scanning in CI: `npm audit` + `dependabot`
@@ -280,6 +280,7 @@ This document covers planned features, enhancements, and long-term directions fo
 - Uptime monitoring: [Better Uptime](https://betteruptime.com/) or [UptimeRobot](https://uptimerobot.com/)
 - Database performance: pg_stat_statements for slow query identification
 - Structured logging: replace `console.log` with [Pino](https://getpino.io/) for JSON logs
+- ~~Health check endpoint~~ ✅ Done — `/api/health` now probes the DB and returns `503` if unavailable; Railway uses it as a readiness gate
 - Health dashboard: public status page (statuspage.io or built in-house)
 
 ---
@@ -317,5 +318,5 @@ As the dataset grows, the project needs a formal governance structure:
 
 ---
 
-*Last updated: April 2025*
+*Last updated: April 2026*
 *To suggest additions to this roadmap, open a [GitHub Issue](https://github.com/yerry262/cancerprogressionatlas/issues) or submit a PR editing this file.*

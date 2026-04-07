@@ -69,6 +69,7 @@ CancerProgressionAtlas/
 │   ├── src/
 │   │   ├── db/
 │   │   │   ├── pool.ts              # PostgreSQL connection pool
+│   │   │   ├── migrate.ts           # Idempotent schema auto-migration on startup
 │   │   │   └── schema.sql           # Full DB schema (users, submissions, files)
 │   │   ├── middleware/
 │   │   │   └── upload.ts            # Multer file handler (500MB, DICOM-aware)
@@ -132,10 +133,13 @@ CancerProgressionAtlas/
 - Helmet.js security headers on all API responses
 - Passwords hashed with bcrypt (12 salt rounds)
 - CORS restricted to allowed origins
+- Rate limiting on auth endpoints (10 attempts/IP/15 min) — brute-force protection
 
 ### Infrastructure
 - **GitHub Actions** auto-deploys frontend to GitHub Pages on every push to `main`
-- **Railway-ready** backend with `railway.toml` config
+- **Railway-ready** backend with `railway.toml` config — API only (frontend lives on GitHub Pages)
+- **Auto-migration** — database schema is applied automatically on startup; no manual SQL step required
+- **Health check** at `/api/health` verifies DB connectivity; Railway uses this to gate traffic
 - Full **Privacy Policy** page with HIPAA de-identification details
 
 ---
@@ -163,13 +167,9 @@ npm install
 npm run dev        # Starts on http://localhost:4000
 ```
 
-### 3. Initialize the database
+The server automatically applies `schema.sql` on startup — no manual `psql` step needed.
 
-```bash
-psql $DATABASE_URL -f backend/src/db/schema.sql
-```
-
-### 4. Start the frontend
+### 3. Start the frontend
 
 ```bash
 cd frontend
@@ -213,13 +213,16 @@ VITE_API_URL=https://your-api.up.railway.app/api
 
 1. Create a [Railway](https://railway.app) account and new project
 2. Connect this GitHub repository
-3. Add a **PostgreSQL** database service
-4. Set environment variables in Railway dashboard:
+3. Add a **PostgreSQL** database service — Railway injects `DATABASE_URL` automatically
+4. Set environment variables in the Railway dashboard:
    - `JWT_SECRET` — generate with `openssl rand -base64 32`
    - `ALLOWED_ORIGINS` — your GitHub Pages URL (e.g. `https://yerry262.github.io`)
-   - `NODE_ENV=production`
-5. Railway auto-detects `railway.toml` and deploys
-6. Run the schema: open Railway's **PostgreSQL shell** and run `\i schema.sql`
+   - `NODE_ENV=production` (Railway may set this automatically)
+5. Railway auto-detects `railway.toml` and deploys the `backend/` directory
+6. **No manual schema step** — the API applies `schema.sql` automatically on first startup
+
+> The health check at `/api/health` returns `{ db: "connected" }` when everything is working.
+> Railway uses this endpoint to decide when the deployment is healthy.
 
 ---
 
@@ -234,7 +237,7 @@ VITE_API_URL=https://your-api.up.railway.app/api
 | `POST` | `/api/submissions` | Upload imaging + metadata (multipart) |
 | `GET` | `/api/submissions` | List own submissions (by session token) |
 | `GET` | `/api/submissions/dataset` | Public approved dataset (filterable, paginated) |
-| `GET` | `/api/health` | Health check |
+| `GET` | `/api/health` | Health check (includes DB connectivity status) |
 | `GET` | `/api/stats` | Live dataset statistics |
 
 ---
@@ -254,7 +257,7 @@ submission_files
   file_size_bytes, storage_path, is_dicom, dicom_series_uid
 
 users
-  id, email, password_hash, display_name, created_at
+  id, email, password_hash, display_name, role (user|admin), is_verified, created_at
 ```
 
 ---
