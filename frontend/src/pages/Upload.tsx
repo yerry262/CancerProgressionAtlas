@@ -3,7 +3,7 @@ import { useDropzone } from 'react-dropzone';
 import { toast } from 'react-hot-toast';
 import {
   Upload as UploadIcon, CheckCircle, ChevronRight, ChevronLeft,
-  X, AlertCircle, Lock, Info, Loader2, Wand2
+  X, AlertCircle, Lock, Info, Loader2, Wand2, ShieldAlert
 } from 'lucide-react';
 import Select from '../components/ui/Select';
 import Input from '../components/ui/Input';
@@ -121,8 +121,14 @@ function DropZone({ files, onAdd, onRemove, onDicomHint }: {
   onDicomHint: (modality: string, date: string, region: string) => void;
 }) {
   const onDrop = useCallback(async (accepted: File[]) => {
-    onAdd(accepted);
-    for (const file of accepted) {
+    const unique = accepted.filter((f) => {
+      const isDup = files.some((e) => e.name === f.name && e.size === f.size);
+      if (isDup) toast.error(`${f.name} is already added`, { duration: 2500 });
+      return !isDup;
+    });
+    if (unique.length === 0) return;
+    onAdd(unique);
+    for (const file of unique) {
       const hints = await parseDicomHints(file);
       if (hints) {
         onDicomHint(hints.modality ?? '', hints.studyDate ?? '', hints.bodyPartExamined ?? '');
@@ -131,7 +137,7 @@ function DropZone({ files, onAdd, onRemove, onDicomHint }: {
         }
       }
     }
-  }, [onAdd, onDicomHint]);
+  }, [onAdd, onDicomHint, files]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -167,6 +173,16 @@ function DropZone({ files, onAdd, onRemove, onDicomHint }: {
         </div>
       </div>
       {files.map((f, i) => <FilePreview key={`${f.name}-${i}`} file={f} onRemove={() => onRemove(i)} />)}
+      {files.length > 0 && (
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs" style={{ color: '#3d5a73' }}>
+            {files.length} of 50 files
+          </span>
+          <span className="text-xs mono" style={{ color: '#3d5a73' }}>
+            Total: {(files.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(1)} MB
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -187,14 +203,23 @@ export default function Upload() {
   const [progress, setProgress] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submissionId, setSubmissionId] = useState('');
+  const [draftSaved, setDraftSaved] = useState(false);
+  const draftTimer = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashDraftSaved = useCallback(() => {
+    setDraftSaved(true);
+    if (draftTimer[0]) clearTimeout(draftTimer[0]);
+    draftTimer[0] = setTimeout(() => setDraftSaved(false), 2000);
+  }, [draftTimer]);
 
   const set = useCallback(<K extends keyof UploadFormData>(field: K, value: UploadFormData[K]) => {
     setForm((f) => {
       const next = { ...f, [field]: value };
       saveDraft(next);
+      if (field !== 'files') flashDraftSaved();
       return next;
     });
-  }, []);
+  }, [flashDraftSaved]);
 
   const applyDicomHints = useCallback((modality: string, date: string, region: string) => {
     setForm((f) => {
@@ -249,10 +274,18 @@ export default function Upload() {
             </div>
             <h2 className="text-2xl font-bold mb-3" style={{ color: '#c8dff0' }}>Submission Received</h2>
             <p className="text-sm mb-2 mono" style={{ color: '#3d5a73' }}>ID: {submissionId}</p>
-            <p className="text-sm mb-8 leading-relaxed" style={{ color: '#6a8fa8' }}>
+            <p className="text-sm mb-4 leading-relaxed" style={{ color: '#6a8fa8' }}>
               Thank you for contributing to the CancerProgressionAtlas. Your imaging will be reviewed
               and anonymized before joining the open dataset. Every scan counts.
             </p>
+            <div className="flex gap-2 p-3 rounded-xl mb-4 text-left"
+              style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.15)' }}>
+              <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#00d4ff' }} />
+              <p className="text-xs" style={{ color: '#6a8fa8' }}>
+                Submissions are typically reviewed within <span style={{ color: '#c8dff0' }}>7–14 days</span>.
+                You can track status and withdraw pending submissions from My Submissions at any time.
+              </p>
+            </div>
             <div className="space-y-3">
               <button onClick={() => { setForm(EMPTY_FORM); setStep(1); setSubmitted(false); }}
                 className="w-full py-3 rounded-xl font-semibold text-sm"
@@ -287,8 +320,30 @@ export default function Upload() {
           )}
         </div>
 
-        {/* Step indicators */}
-        <div className="flex items-start mb-10 px-2">
+        {/* Not-a-medical-service disclaimer */}
+        <div className="mb-8 flex gap-3 p-4 rounded-2xl"
+          style={{ background: 'rgba(255,171,0,0.06)', border: '1px solid rgba(255,171,0,0.2)' }}>
+          <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#ffab00' }} />
+          <div className="text-sm leading-relaxed" style={{ color: '#6a8fa8' }}>
+            <span style={{ color: '#ffab00' }} className="font-semibold">This is not a medical service.</span>{' '}
+            CancerProgressionAtlas is a research data platform. Submitting imaging here does not
+            constitute medical advice, diagnosis, or treatment. Your data is used solely to train AI
+            models — it will not be reviewed by a doctor and will not affect your care.
+            Submissions are typically reviewed within 7–14 days.{' '}
+            You can withdraw a pending submission at any time from{' '}
+            <a href="/submissions" style={{ color: '#00d4ff' }} className="hover:underline">My Submissions</a>.
+          </div>
+        </div>
+
+        {/* Step indicators + draft-saved indicator */}
+        <div className="flex items-center justify-between mb-2 px-2 h-5">
+          <span />
+          <span className="text-xs transition-opacity duration-500 mono"
+            style={{ color: '#00e676', opacity: draftSaved ? 1 : 0 }}>
+            Draft saved ✓
+          </span>
+        </div>
+        <div className="flex items-start mb-8 px-2">
           {STEPS.map((s, i) => (
             <div key={s.id} className="flex items-center flex-1">
               <StepHeader step={s} current={step} />
@@ -387,6 +442,7 @@ export default function Upload() {
                 <p className="text-xs leading-relaxed" style={{ color: '#6a8fa8' }}>
                   <span style={{ color: '#c8dff0' }}>Privacy protection:</span> Patient identifiers embedded in DICOM headers
                   (name, DOB, MRN, institution) are automatically stripped before storage. Only pixel data and your chosen metadata are kept.
+                  We do not view your scan images during initial review — only the stripped metadata is assessed.
                 </p>
               </div>
               <DropZone files={form.files}
@@ -470,7 +526,7 @@ export default function Upload() {
               {submitting && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-xs" style={{ color: '#6a8fa8' }}>
-                    <span>Uploading & encrypting…</span>
+                    <span>Uploading & anonymizing…</span>
                     <span className="mono">{progress}%</span>
                   </div>
                   <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(26,58,92,0.5)' }}>

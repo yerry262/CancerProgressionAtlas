@@ -3,7 +3,17 @@ import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcrypt';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
+import rateLimit from 'express-rate-limit';
 import pool from '../db/pool';
+
+// Max 10 attempts per IP per 15 minutes on auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again in 15 minutes.' },
+});
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET ?? 'change-me-in-production';
@@ -15,6 +25,7 @@ const SALT_ROUNDS = 12;
 // ============================================================
 router.post(
   '/register',
+  authLimiter,
   [
     body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
     body('password')
@@ -64,6 +75,7 @@ router.post(
 // ============================================================
 router.post(
   '/login',
+  authLimiter,
   [
     body('email').isEmail().normalizeEmail(),
     body('password').notEmpty(),
@@ -114,6 +126,10 @@ router.get('/me', async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Not authenticated.' });
   }
 
+  const adminEmails = new Set(
+    (process.env.ADMIN_EMAILS ?? '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+  );
+
   try {
     const token = authHeader.slice(7);
     const payload = jwt.verify(token, JWT_SECRET) as { sub: string };
@@ -123,7 +139,13 @@ router.get('/me', async (req: Request, res: Response) => {
     );
     if (rows.length === 0) return res.status(404).json({ error: 'User not found.' });
     const u = rows[0];
-    return res.json({ id: u.id, email: u.email, displayName: u.display_name, createdAt: u.created_at });
+    return res.json({
+      id: u.id,
+      email: u.email,
+      displayName: u.display_name,
+      createdAt: u.created_at,
+      isAdmin: adminEmails.has(u.email.toLowerCase()),
+    });
   } catch {
     return res.status(401).json({ error: 'Invalid or expired token.' });
   }

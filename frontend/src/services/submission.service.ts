@@ -1,4 +1,4 @@
-import api from './api';
+import api, { uploadApi } from './api';
 import type { UploadFormData } from '../types';
 
 export interface SubmissionResponse {
@@ -15,7 +15,8 @@ export interface SubmissionListItem {
   imaging_date: string;
   body_region: string;
   cancer_stage?: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
+  rejection_reason?: string;
   created_at: string;
   file_count: number;
 }
@@ -66,7 +67,7 @@ export const submissionService = {
       fd.append('files', file);
     }
 
-    const { data } = await api.post<SubmissionResponse>('/submissions', fd, {
+    const { data } = await uploadApi.post<SubmissionResponse>('/submissions', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (e) => {
         if (onProgress && e.total) {
@@ -89,6 +90,8 @@ export const submissionService = {
     cancerType?: string;
     modality?: string;
     stage?: string;
+    country?: string;
+    treatmentContext?: string;
     search?: string;
   } = {}): Promise<{ entries: DatasetEntry[]; total: number }> {
     const { data } = await api.get<{ entries: DatasetEntry[]; total: number }>('/submissions/dataset', { params });
@@ -98,5 +101,9 @@ export const submissionService = {
   async getStats(): Promise<Stats> {
     const { data } = await api.get<Stats>('/stats');
     return data;
+  },
+
+  async withdraw(id: string): Promise<void> {
+    await api.delete(`/submissions/${id}`);
   },
 };

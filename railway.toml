@@ -1,18 +1,28 @@
 [build]
 builder = "nixpacks"
 
+# ─── API Service ────────────────────────────────────────────────────────────
+# The frontend is deployed to GitHub Pages — only the API runs on Railway.
+# Add a PostgreSQL service in the Railway dashboard; DATABASE_URL is injected
+# automatically. Set the following env vars in Railway:
+#
+#   JWT_SECRET       — long random string (required)
+#   ALLOWED_ORIGINS  — comma-separated frontend URLs, e.g. https://yerry262.github.io,https://yourcustomdomain.com
+#   UPLOAD_DIR       — ./uploads  (or omit for default)
+#   NODE_ENV         — production (set automatically by Railway)
+
 [[services]]
 name = "api"
 source = "backend"
 buildCommand = "npm install && npm run build"
 startCommand = "npm start"
 
+[services.deploy]
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
+
 [services.variables]
 PORT = "4000"
 NODE_ENV = "production"
-
-[[services]]
-name = "frontend"
-source = "frontend"
-buildCommand = "npm install && npm run build"
-startCommand = "npx serve -s dist -l 3000"

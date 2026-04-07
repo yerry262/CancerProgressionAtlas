@@ -23,15 +23,20 @@ This document covers planned features, enhancements, and long-term directions fo
 - Use [Resend](https://resend.com) or [Postmark](https://postmarkapp.com) (both have generous free tiers)
 - Store `email_verified` on the users table
 
-### 🛡️ Admin Review Dashboard
-**Why:** Every submission must be manually reviewed before entering the public dataset.
-**What to build:**
-- `/admin` route (JWT role-based: `role = 'admin'` on users table)
-- Queue view: pending submissions listed oldest-first
-- Per-submission actions: Approve, Reject (with reason), Flag for expert review
+### 🛡️ Admin Review Dashboard ✅ Done (core)
+**What was built:**
+- `/admin` route — access gated by `ADMIN_EMAILS` env var (no code change needed to add admins)
+- Queue view: pending submissions oldest-first, with tabs for Approved/Rejected history
+- Per-submission: expandable detail card with all metadata + clinical notes
+- Approve (one click) and Reject (modal with required reason) actions
+- Live queue count badge in the Pending tab
+- Admin link appears in the Navbar user menu only for admin accounts
+- Backend: `/api/admin/stats`, `/api/admin/submissions`, `/:id/approve`, `/:id/reject`
+
+**Still to build:**
 - Bulk approve for clearly compliant submissions
-- Image preview in the admin panel (thumbnail or Cornerstone3D viewer)
-- Audit log: who approved/rejected, when, reason stored in DB
+- Image/file preview in the admin panel (needs S3 presigned URLs first)
+- "Flag for expert review" status beyond approve/reject
 
 ### 📁 S3-Compatible File Storage
 **Why:** Local disk storage won't scale and is lost on Railway redeploy.
@@ -268,7 +273,7 @@ This document covers planned features, enhancements, and long-term directions fo
 - API response caching: Redis for stats endpoint and public dataset queries
 
 ### Security Hardening
-- Rate limiting on auth endpoints: `express-rate-limit` (max 10 login attempts per IP per 15 min)
+- ~~Rate limiting on auth endpoints: `express-rate-limit` (max 10 login attempts per IP per 15 min)~~ ✅ Done
 - CSRF protection for state-changing endpoints
 - Content Security Policy headers via Helmet
 - Dependency vulnerability scanning in CI: `npm audit` + `dependabot`
@@ -280,6 +285,7 @@ This document covers planned features, enhancements, and long-term directions fo
 - Uptime monitoring: [Better Uptime](https://betteruptime.com/) or [UptimeRobot](https://uptimerobot.com/)
 - Database performance: pg_stat_statements for slow query identification
 - Structured logging: replace `console.log` with [Pino](https://getpino.io/) for JSON logs
+- ~~Health check endpoint~~ ✅ Done — `/api/health` now probes the DB and returns `503` if unavailable; Railway uses it as a readiness gate
 - Health dashboard: public status page (statuspage.io or built in-house)
 
 ---
@@ -317,5 +323,5 @@ As the dataset grows, the project needs a formal governance structure:
 
 ---
 
-*Last updated: April 2025*
+*Last updated: April 2026*
 *To suggest additions to this roadmap, open a [GitHub Issue](https://github.com/yerry262/cancerprogressionatlas/issues) or submit a PR editing this file.*
