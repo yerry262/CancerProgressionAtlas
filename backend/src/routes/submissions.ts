@@ -146,6 +146,36 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // ============================================================
+// DELETE /api/submissions/:id — withdraw a pending or rejected submission
+// ============================================================
+router.delete('/:id', async (req: Request, res: Response) => {
+  const sessionToken = req.headers['x-session-token'] as string | undefined;
+  if (!sessionToken) {
+    return res.status(401).json({ error: 'Session token required to withdraw a submission.' });
+  }
+
+  try {
+    const { rowCount } = await pool.query(
+      `UPDATE submissions
+       SET status = 'withdrawn', reviewed_at = NOW()
+       WHERE id = $1
+         AND session_token = $2
+         AND status IN ('pending', 'rejected')`,
+      [req.params.id, sessionToken]
+    );
+    if (rowCount === 0) {
+      return res.status(404).json({
+        error: 'Submission not found, already approved, or session token does not match.',
+      });
+    }
+    return res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ============================================================
 // GET /api/dataset — public approved dataset
 // ============================================================
 router.get('/dataset', async (req: Request, res: Response) => {
@@ -155,6 +185,8 @@ router.get('/dataset', async (req: Request, res: Response) => {
     cancerType,
     modality,
     stage,
+    country,
+    treatmentContext,
     search,
   } = req.query as Record<string, string>;
 
@@ -165,6 +197,8 @@ router.get('/dataset', async (req: Request, res: Response) => {
   if (cancerType) { conditions.push(`cancer_type = $${p++}`); params.push(cancerType); }
   if (modality) { conditions.push(`imaging_modality = $${p++}`); params.push(modality); }
   if (stage) { conditions.push(`cancer_stage = $${p++}`); params.push(stage); }
+  if (country) { conditions.push(`country_code = $${p++}`); params.push(country); }
+  if (treatmentContext) { conditions.push(`treatment_context = $${p++}`); params.push(treatmentContext); }
   if (search) {
     conditions.push(`(cancer_type ILIKE $${p} OR imaging_modality ILIKE $${p} OR body_region ILIKE $${p})`);
     params.push(`%${search}%`);

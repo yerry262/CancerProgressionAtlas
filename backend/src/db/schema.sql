@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS submissions (
 
   -- Status workflow
   status          TEXT NOT NULL DEFAULT 'pending'
-                  CHECK (status IN ('pending', 'approved', 'rejected')),
+                  CHECK (status IN ('pending', 'approved', 'rejected', 'withdrawn')),
   rejection_reason TEXT,
 
   -- Audit
@@ -94,6 +94,14 @@ CREATE TABLE IF NOT EXISTS submission_files (
 
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Widen the status check constraint to include 'withdrawn' on existing deployments
+DO $$ BEGIN
+  ALTER TABLE submissions DROP CONSTRAINT IF EXISTS submissions_status_check;
+  ALTER TABLE submissions ADD CONSTRAINT submissions_status_check
+    CHECK (status IN ('pending', 'approved', 'rejected', 'withdrawn'));
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- ============================================================
 -- DATASET (approved, public-facing view)

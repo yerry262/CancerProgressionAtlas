@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Download, ExternalLink, Database, SlidersHorizontal, AlertCircle } from 'lucide-react';
+import { Search, Download, Database, SlidersHorizontal, AlertCircle, X } from 'lucide-react';
 import Badge from '../components/ui/Badge';
 import Select from '../components/ui/Select';
 import { DatasetCardSkeleton } from '../components/ui/Skeleton';
-import { CANCER_TYPES, IMAGING_MODALITIES, CANCER_STAGES } from '../data/medical';
+import { CANCER_TYPES, IMAGING_MODALITIES, CANCER_STAGES, TREATMENT_CONTEXT } from '../data/medical';
+import { COUNTRIES } from '../data/countries';
 import { submissionService, type DatasetEntry } from '../services/submission.service';
 
 const MODALITY_BADGE: Record<string, 'cyan' | 'teal' | 'blue' | 'muted'> = {
@@ -39,14 +40,11 @@ function EntryCard({ entry }: { entry: DatasetEntry }) {
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-          style={{ border: '1px solid rgba(0,212,255,0.25)', color: '#00d4ff', background: 'rgba(0,212,255,0.05)' }}>
-          <ExternalLink className="w-3 h-3" /> View
-        </button>
-        <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-          style={{ border: '1px solid rgba(26,58,92,0.5)', color: '#6a8fa8', background: 'transparent' }}>
-          <Download className="w-3 h-3" /> Download
-        </button>
+        <span className="px-3 py-1.5 rounded-lg text-xs"
+          style={{ border: '1px solid rgba(26,58,92,0.4)', color: '#3d5a73', background: 'transparent' }}
+          title="File viewer coming soon">
+          <Download className="w-3 h-3 inline mr-1" />Download (soon)
+        </span>
       </div>
     </div>
   );
@@ -57,7 +55,15 @@ export default function Dataset() {
   const [filterCancer, setFilterCancer] = useState('');
   const [filterModality, setFilterModality] = useState('');
   const [filterStage, setFilterStage] = useState('');
+  const [filterCountry, setFilterCountry] = useState('');
+  const [filterTreatment, setFilterTreatment] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+
+  const hasActiveFilters = !!(filterCancer || filterModality || filterStage || filterCountry || filterTreatment);
+  const clearFilters = () => {
+    setFilterCancer(''); setFilterModality(''); setFilterStage('');
+    setFilterCountry(''); setFilterTreatment(''); setPage(1);
+  };
   const [page, setPage] = useState(1);
   const LIMIT = 20;
 
@@ -69,6 +75,8 @@ export default function Dataset() {
       ...(filterCancer && { cancerType: filterCancer }),
       ...(filterModality && { modality: filterModality }),
       ...(filterStage && { stage: filterStage }),
+      ...(filterCountry && { country: filterCountry }),
+      ...(filterTreatment && { treatmentContext: filterTreatment }),
     }),
     staleTime: 30_000,
     placeholderData: (prev) => prev,
@@ -110,18 +118,28 @@ export default function Dataset() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#3d5a73' }} />
               <input type="text" placeholder="Search cancer type, modality, body region…"
                 value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                className="w-full pl-10 pr-4 py-3 rounded-xl text-sm"
+                className="w-full pl-10 pr-4 py-3 rounded-xl text-sm outline-none"
                 style={{ background: 'rgba(16,32,56,0.8)', border: '1px solid rgba(26,58,92,0.8)', color: '#c8dff0' }} />
             </div>
             <button onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
-              style={{ background: showFilters ? 'rgba(0,212,255,0.1)' : 'rgba(16,32,56,0.8)', border: showFilters ? '1px solid rgba(0,212,255,0.3)' : '1px solid rgba(26,58,92,0.8)', color: showFilters ? '#00d4ff' : '#6a8fa8' }}>
-              <SlidersHorizontal className="w-4 h-4" /> Filters
+              style={{ background: (showFilters || hasActiveFilters) ? 'rgba(0,212,255,0.1)' : 'rgba(16,32,56,0.8)', border: (showFilters || hasActiveFilters) ? '1px solid rgba(0,212,255,0.3)' : '1px solid rgba(26,58,92,0.8)', color: (showFilters || hasActiveFilters) ? '#00d4ff' : '#6a8fa8' }}>
+              <SlidersHorizontal className="w-4 h-4" />
+              Filters
+              {hasActiveFilters && (
+                <span className="px-1.5 py-0.5 rounded-full text-xs"
+                  style={{ background: 'rgba(0,212,255,0.2)', color: '#00d4ff' }}>
+                  {[filterCancer, filterModality, filterStage, filterCountry, filterTreatment].filter(Boolean).length}
+                </span>
+              )}
             </button>
-            <button className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold"
-              style={{ border: '1px solid rgba(26,58,92,0.5)', color: '#6a8fa8', background: 'transparent' }}>
-              <Download className="w-4 h-4" /> CSV
-            </button>
+            {hasActiveFilters && (
+              <button onClick={clearFilters}
+                className="flex items-center gap-1.5 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                style={{ border: '1px solid rgba(255,61,90,0.25)', color: '#ff3d5a', background: 'rgba(255,61,90,0.06)' }}>
+                <X className="w-4 h-4" /> Clear
+              </button>
+            )}
           </div>
           {showFilters && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 rounded-xl animate-fadeInUp"
@@ -133,6 +151,10 @@ export default function Dataset() {
                 options={[{ value: '', label: 'All Modalities' }, ...IMAGING_MODALITIES as unknown as { value: string; label: string }[]]} />
               <Select label="Cancer Stage" value={filterStage} onChange={(v) => { setFilterStage(v); setPage(1); }}
                 options={[{ value: '', label: 'All Stages' }, ...CANCER_STAGES as unknown as { value: string; label: string }[]]} />
+              <Select label="Treatment Context" value={filterTreatment} onChange={(v) => { setFilterTreatment(v); setPage(1); }}
+                options={[{ value: '', label: 'All Contexts' }, ...TREATMENT_CONTEXT as unknown as { value: string; label: string }[]]} />
+              <Select label="Country" value={filterCountry} onChange={(v) => { setFilterCountry(v); setPage(1); }}
+                options={[{ value: '', label: 'All Countries' }, ...COUNTRIES as unknown as { value: string; label: string }[]]} />
             </div>
           )}
         </div>

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Upload, Clock, CheckCircle, XCircle, FileImage, ChevronRight, AlertCircle, LogIn } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
+import { Upload, Clock, CheckCircle, XCircle, FileImage, AlertCircle, LogIn, Trash2, Loader2 } from 'lucide-react';
 import Badge from '../components/ui/Badge';
 import { SubmissionSkeleton } from '../components/ui/Skeleton';
 import { submissionService, type SubmissionListItem } from '../services/submission.service';
@@ -11,48 +13,103 @@ const STATUS_CONFIG = {
   pending: { label: 'Under Review', icon: Clock, color: 'warning' as const },
   approved: { label: 'Approved', icon: CheckCircle, color: 'success' as const },
   rejected: { label: 'Rejected', icon: XCircle, color: 'danger' as const },
+  withdrawn: { label: 'Withdrawn', icon: XCircle, color: 'muted' as const },
 };
 
-function SubmissionCard({ sub }: { sub: SubmissionListItem }) {
+function SubmissionCard({ sub, onWithdraw, withdrawing }: {
+  sub: SubmissionListItem;
+  onWithdraw: () => void;
+  withdrawing: boolean;
+}) {
   const { label, icon: StatusIcon, color } = STATUS_CONFIG[sub.status];
   const cancerLabel = CANCER_TYPES.find(c => c.value === sub.cancer_type)?.label ?? sub.cancer_type;
   const modalityLabel = IMAGING_MODALITIES.find(m => m.value === sub.imaging_modality)?.label ?? sub.imaging_modality;
+  const canWithdraw = sub.status === 'pending' || sub.status === 'rejected';
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 rounded-2xl glass transition-all duration-200 hover:border-glow cursor-pointer">
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
-        <FileImage className="w-6 h-6" style={{ color: '#00d4ff' }} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2 mb-1">
-          <span className="font-semibold text-sm" style={{ color: '#c8dff0' }}>{cancerLabel}</span>
-          <Badge variant="cyan">{modalityLabel}</Badge>
-          <Badge variant={color}>
-            <StatusIcon className="w-3 h-3 mr-1 inline" />{label}
-          </Badge>
+    <div className="p-5 rounded-2xl glass transition-all duration-200"
+      style={{ borderColor: sub.status === 'rejected' ? 'rgba(255,61,90,0.2)' : undefined }}>
+      <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+        <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.2)' }}>
+          <FileImage className="w-6 h-6" style={{ color: '#00d4ff' }} />
         </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs" style={{ color: '#6a8fa8' }}>
-          <span>{sub.body_region}</span>
-          <span>Imaged: {sub.imaging_date}</span>
-          <span>Submitted: {sub.created_at?.slice(0, 10)}</span>
-          <span className="mono">{sub.id.slice(0, 8).toUpperCase()}</span>
-          <span>{sub.file_count} file{sub.file_count !== 1 ? 's' : ''}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span className="font-semibold text-sm" style={{ color: '#c8dff0' }}>{cancerLabel}</span>
+            <Badge variant="cyan">{modalityLabel}</Badge>
+            <Badge variant={color}>
+              <StatusIcon className="w-3 h-3 mr-1 inline" />{label}
+            </Badge>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs" style={{ color: '#6a8fa8' }}>
+            <span>{sub.body_region}</span>
+            <span>Imaged: {sub.imaging_date}</span>
+            <span>Submitted: {sub.created_at?.slice(0, 10)}</span>
+            <span className="mono">{sub.id.slice(0, 8).toUpperCase()}</span>
+            <span>{sub.file_count} file{sub.file_count !== 1 ? 's' : ''}</span>
+          </div>
         </div>
+        {canWithdraw && (
+          <button onClick={onWithdraw} disabled={withdrawing}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold flex-shrink-0 transition-all"
+            style={{
+              background: 'rgba(255,61,90,0.06)',
+              border: '1px solid rgba(255,61,90,0.2)',
+              color: withdrawing ? '#3d5a73' : '#ff3d5a',
+              cursor: withdrawing ? 'not-allowed' : 'pointer',
+            }}>
+            {withdrawing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+            Withdraw
+          </button>
+        )}
+        {sub.status === 'approved' && (
+          <span className="text-xs px-2 py-1 rounded-lg flex-shrink-0"
+            style={{ background: 'rgba(0,230,118,0.06)', color: '#3d5a73', border: '1px solid rgba(0,230,118,0.1)' }}>
+            In dataset
+          </span>
+        )}
       </div>
-      <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: '#3d5a73' }} />
+      {/* Rejection reason + guidance */}
+      {sub.status === 'rejected' && (sub as SubmissionListItem & { rejection_reason?: string }).rejection_reason && (
+        <div className="mt-3 p-3 rounded-xl"
+          style={{ background: 'rgba(255,61,90,0.05)', border: '1px solid rgba(255,61,90,0.15)' }}>
+          <p className="text-xs font-semibold mb-1" style={{ color: '#ff3d5a' }}>Rejection reason</p>
+          <p className="text-xs mb-2" style={{ color: '#6a8fa8' }}>
+            {(sub as SubmissionListItem & { rejection_reason?: string }).rejection_reason}
+          </p>
+          <Link to="/upload" className="text-xs" style={{ color: '#00d4ff' }}>
+            Re-submit with corrections →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function Submissions() {
   const { isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
 
   const { data: submissions = [], isLoading, isError } = useQuery({
     queryKey: ['submissions'],
     queryFn: submissionService.listMine,
     staleTime: 15_000,
     retry: false,
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: (id: string) => submissionService.withdraw(id),
+    onSuccess: () => {
+      toast.success('Submission withdrawn');
+      setWithdrawingId(null);
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
+    },
+    onError: () => {
+      toast.error('Could not withdraw — please try again');
+      setWithdrawingId(null);
+    },
   });
 
   const approved = submissions.filter(s => s.status === 'approved').length;
@@ -143,7 +200,17 @@ export default function Submissions() {
               </Link>
             </div>
           )}
-          {submissions.map(sub => <SubmissionCard key={sub.id} sub={sub} />)}
+          {submissions.map(sub => (
+            <SubmissionCard
+              key={sub.id}
+              sub={sub}
+              withdrawing={withdrawingId === sub.id}
+              onWithdraw={() => {
+                setWithdrawingId(sub.id);
+                withdrawMutation.mutate(sub.id);
+              }}
+            />
+          ))}
         </div>
       </div>
     </div>
