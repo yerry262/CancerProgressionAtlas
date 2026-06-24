@@ -106,7 +106,7 @@ END $$;
 -- ============================================================
 -- DATASET (approved, public-facing view)
 -- ============================================================
-CREATE VIEW dataset AS
+CREATE OR REPLACE VIEW dataset AS
   SELECT
     s.id,
     s.cancer_type,

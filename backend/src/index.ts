@@ -45,16 +45,18 @@ app.get('/api/health', async (_req, res) => {
 // Stats endpoint
 app.get('/api/stats', async (_req, res) => {
   try {
-    const [subCount, typeCount] = await Promise.all([
+    const [subCount, typeCount, countryCount] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM submissions WHERE status = $1', ['approved']),
       pool.query('SELECT COUNT(DISTINCT cancer_type) FROM submissions WHERE status = $1', ['approved']),
+      pool.query('SELECT COUNT(DISTINCT country_code) FROM submissions WHERE status = $1 AND country_code IS NOT NULL', ['approved']),
     ]);
     res.json({
       totalSubmissions: parseInt(subCount.rows[0].count),
       cancerTypes: parseInt(typeCount.rows[0].count),
+      countries: parseInt(countryCount.rows[0].count),
     });
   } catch {
-    res.json({ totalSubmissions: 0, cancerTypes: 0 });
+    res.json({ totalSubmissions: 0, cancerTypes: 0, countries: 0 });
   }
 });
 
