@@ -15,6 +15,7 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName?: string;
+  isVerified?: boolean;
   createdAt: string;
   isAdmin?: boolean;
 }
@@ -22,6 +23,7 @@ export interface AuthUser {
 export interface AuthResponse {
   token: string;
   user: AuthUser;
+  message?: string;
 }
 
 export const authService = {
@@ -42,6 +44,16 @@ export const authService = {
 
   async anonymousSession(): Promise<{ sessionToken: string }> {
     const { data } = await api.post<{ sessionToken: string }>('/auth/anonymous-session');
+    return data;
+  },
+
+  async sendVerificationEmail(email: string): Promise<{ message: string }> {
+    const { data } = await api.post<{ message: string }>('/auth/send-verification-email', { email });
+    return data;
+  },
+
+  async verifyEmail(token: string): Promise<{ message: string; user: AuthUser }> {
+    const { data } = await api.post<{ message: string; user: AuthUser }>('/auth/verify-email', { token });
     return data;
   },
 };

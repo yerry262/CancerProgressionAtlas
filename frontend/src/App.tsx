@@ -11,6 +11,7 @@ import Submissions from './pages/Submissions';
 import About from './pages/About';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import VerifyEmail from './pages/VerifyEmail';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Consent from './pages/Consent';
@@ -58,6 +59,7 @@ export default function App() {
                 <Route path="/about" element={<About />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/consent" element={<Consent />} />

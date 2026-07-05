@@ -1,10 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
 import pool from '../db/pool';
 import { uploadMiddleware } from '../middleware/upload';
 import { optionalAuth } from '../middleware/auth';
 import { emailService } from '../services/email';
+import { storageService } from '../services/storage';
 
 /**
  * Normalizes a date value from HTML month inputs (YYYY-MM) to a full ISO date
@@ -82,10 +84,32 @@ router.post(
 
       const submissionId = rows[0].id;
       const files = (req.files ?? []) as Express.Multer.File[];
+      const STORAGE_BACKEND = (process.env.STORAGE_BACKEND || 'local') as 'local' | 's3' | 'r2';
 
       for (const file of files) {
         const ext = file.originalname.toLowerCase();
         const isDicom = ext.endsWith('.dcm') || ext.endsWith('.dicom') || file.mimetype === 'application/dicom';
+
+        let storagePath = '';
+        let storageBackend = STORAGE_BACKEND;
+        let storedName = file.filename || path.basename(file.originalname);
+
+        if (STORAGE_BACKEND === 'local') {
+          // Local storage: file is already on disk from multer
+          storagePath = file.path;
+        } else {
+          // S3/R2 storage: upload from memory
+          const filename = `${uuidv4()}${path.extname(file.originalname)}`;
+          const storageFile = await storageService.uploadFile(
+            filename,
+            file.buffer,
+            file.mimetype
+          );
+          storagePath = storageFile.path;
+          storageBackend = storageFile.backend;
+          storedName = filename;
+        }
+
         await client.query(
           `INSERT INTO submission_files (
             submission_id, original_name, stored_name, mime_type,
@@ -94,11 +118,11 @@ router.post(
           [
             submissionId,
             file.originalname,
-            file.filename,
+            storedName,
             file.mimetype,
             file.size,
-            file.path,
-            'local',
+            storagePath,
+            storageBackend,
             isDicom,
           ]
         );
