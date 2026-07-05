@@ -5,6 +5,7 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import rateLimit from 'express-rate-limit';
 import pool from '../db/pool';
+import { emailService } from '../services/email';
 
 // Max 10 attempts per IP per 15 minutes on auth endpoints
 const authLimiter = rateLimit({
@@ -59,9 +60,18 @@ router.post(
       const user = rows[0];
       const token = jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
+      // Send verification email
+      const verificationToken = jwt.sign(
+        { sub: user.id, purpose: 'email-verification' },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+      await emailService.sendVerificationEmail(email, verificationToken);
+
       return res.status(201).json({
         token,
-        user: { id: user.id, email: user.email, displayName: user.display_name, createdAt: user.created_at },
+        user: { id: user.id, email: user.email, displayName: user.display_name, createdAt: user.created_at, isVerified: false },
+        message: 'Check your email to verify your account. You can upload without verifying, but verification unlocks additional features.',
       });
     } catch (err) {
       console.error('Register error:', err);
@@ -134,7 +144,7 @@ router.get('/me', async (req: Request, res: Response) => {
     const token = authHeader.slice(7);
     const payload = jwt.verify(token, JWT_SECRET) as { sub: string };
     const { rows } = await pool.query(
-      'SELECT id, email, display_name, created_at FROM users WHERE id = $1',
+      'SELECT id, email, display_name, is_verified, created_at FROM users WHERE id = $1',
       [payload.sub]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'User not found.' });
@@ -143,6 +153,7 @@ router.get('/me', async (req: Request, res: Response) => {
       id: u.id,
       email: u.email,
       displayName: u.display_name,
+      isVerified: u.is_verified,
       createdAt: u.created_at,
       isAdmin: adminEmails.has(u.email.toLowerCase()),
     });
@@ -158,5 +169,106 @@ router.post('/anonymous-session', (_req: Request, res: Response) => {
   const sessionToken = uuidv4();
   return res.json({ sessionToken });
 });
+
+// ============================================================
+// POST /api/auth/send-verification-email
+// ============================================================
+router.post(
+  '/send-verification-email',
+  authLimiter,
+  [body('email').isEmail().normalizeEmail()],
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: 'Invalid email.' });
+    }
+
+    const { email } = req.body as { email: string };
+
+    try {
+      const { rows } = await pool.query(
+        'SELECT id, is_verified FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
+      const user = rows[0];
+      if (user.is_verified) {
+        return res.status(400).json({ error: 'Email already verified.' });
+      }
+
+      // Create verification token (expires in 24 hours)
+      const verificationToken = jwt.sign(
+        { sub: user.id, purpose: 'email-verification' },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      // Send email
+      const sent = await emailService.sendVerificationEmail(email, verificationToken);
+      if (!sent) {
+        return res.status(500).json({ error: 'Failed to send verification email.' });
+      }
+
+      return res.json({ message: 'Verification email sent.' });
+    } catch (err) {
+      console.error('Send verification email error:', err);
+      return res.status(500).json({ error: 'Failed to send email.' });
+    }
+  }
+);
+
+// ============================================================
+// POST /api/auth/verify-email
+// ============================================================
+router.post(
+  '/verify-email',
+  [body('token').notEmpty().withMessage('Verification token is required')],
+  async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ error: errors.array()[0].msg });
+    }
+
+    const { token } = req.body as { token: string };
+
+    try {
+      const payload = jwt.verify(token, JWT_SECRET) as { sub: string; purpose: string };
+
+      if (payload.purpose !== 'email-verification') {
+        return res.status(400).json({ error: 'Invalid token.' });
+      }
+
+      const userId = payload.sub;
+
+      // Update user as verified
+      const { rows } = await pool.query(
+        'UPDATE users SET is_verified = TRUE, updated_at = NOW() WHERE id = $1 RETURNING id, email, is_verified',
+        [userId]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'User not found.' });
+      }
+
+      return res.json({
+        message: 'Email verified successfully.',
+        user: { id: rows[0].id, email: rows[0].email, isVerified: rows[0].is_verified },
+      });
+    } catch (err) {
+      if (err instanceof jwt.TokenExpiredError) {
+        return res.status(400).json({ error: 'Verification link has expired. Please request a new one.' });
+      }
+      if (err instanceof jwt.JsonWebTokenError) {
+        return res.status(400).json({ error: 'Invalid verification link.' });
+      }
+      console.error('Verify email error:', err);
+      return res.status(500).json({ error: 'Verification failed.' });
+    }
+  }
+);
 
 export default router;

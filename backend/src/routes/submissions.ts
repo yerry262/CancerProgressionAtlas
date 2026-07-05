@@ -3,6 +3,8 @@ import { body, validationResult } from 'express-validator';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db/pool';
 import { uploadMiddleware } from '../middleware/upload';
+import { optionalAuth } from '../middleware/auth';
+import { emailService } from '../services/email';
 
 /**
  * Normalizes a date value from HTML month inputs (YYYY-MM) to a full ISO date
@@ -21,6 +23,7 @@ const router = Router();
 // ============================================================
 router.post(
   '/',
+  optionalAuth,
   uploadMiddleware.array('files', 50),
   [
     body('cancerType').notEmpty().withMessage('Cancer type is required'),
@@ -44,6 +47,7 @@ router.post(
     } = req.body;
 
     const sessionToken = req.headers['x-session-token'] as string | undefined ?? uuidv4();
+    const userId = req.userId; // From JWT auth middleware
 
     const client = await pool.connect();
     try {
@@ -51,13 +55,14 @@ router.post(
 
       const { rows } = await client.query(
         `INSERT INTO submissions (
-          session_token, cancer_type, cancer_stage, diagnosis_date,
+          user_id, session_token, cancer_type, cancer_stage, diagnosis_date,
           imaging_modality, imaging_date, body_region, treatment_context,
           notes, patient_age, patient_sex, country_code,
           is_anonymous, consent_given
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
         RETURNING id`,
         [
+          userId || null,
           sessionToken,
           cancerType,
           cancerStage || null,
@@ -118,26 +123,46 @@ router.post(
 );
 
 // ============================================================
-// GET /api/submissions — list submissions for session
+// GET /api/submissions — list submissions for session or authenticated user
 // ============================================================
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', optionalAuth, async (req: Request, res: Response) => {
   const sessionToken = req.headers['x-session-token'] as string | undefined;
-  if (!sessionToken) {
+  const userId = req.userId;
+
+  // Require either a user ID (logged in) or session token (anonymous)
+  if (!userId && !sessionToken) {
     return res.json({ submissions: [] });
   }
 
   try {
-    const { rows } = await pool.query(
-      `SELECT s.id, s.cancer_type, s.imaging_modality, s.imaging_date,
-              s.body_region, s.cancer_stage, s.status, s.created_at,
-              COUNT(f.id)::int AS file_count
-       FROM submissions s
-       LEFT JOIN submission_files f ON f.submission_id = s.id
-       WHERE s.session_token = $1
-       GROUP BY s.id
-       ORDER BY s.created_at DESC`,
-      [sessionToken]
-    );
+    let query: string;
+    let params: unknown[];
+
+    if (userId) {
+      // Logged-in users see their submissions
+      query = `SELECT s.id, s.cancer_type, s.imaging_modality, s.imaging_date,
+                      s.body_region, s.cancer_stage, s.status, s.created_at,
+                      COUNT(f.id)::int AS file_count
+               FROM submissions s
+               LEFT JOIN submission_files f ON f.submission_id = s.id
+               WHERE s.user_id = $1
+               GROUP BY s.id
+               ORDER BY s.created_at DESC`;
+      params = [userId];
+    } else {
+      // Anonymous users see submissions by session token
+      query = `SELECT s.id, s.cancer_type, s.imaging_modality, s.imaging_date,
+                      s.body_region, s.cancer_stage, s.status, s.created_at,
+                      COUNT(f.id)::int AS file_count
+               FROM submissions s
+               LEFT JOIN submission_files f ON f.submission_id = s.id
+               WHERE s.session_token = $1
+               GROUP BY s.id
+               ORDER BY s.created_at DESC`;
+      params = [sessionToken];
+    }
+
+    const { rows } = await pool.query(query, params);
     return res.json({ submissions: rows });
   } catch (err) {
     console.error(err);
@@ -148,24 +173,38 @@ router.get('/', async (req: Request, res: Response) => {
 // ============================================================
 // DELETE /api/submissions/:id — withdraw a pending or rejected submission
 // ============================================================
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', optionalAuth, async (req: Request, res: Response) => {
   const sessionToken = req.headers['x-session-token'] as string | undefined;
-  if (!sessionToken) {
-    return res.status(401).json({ error: 'Session token required to withdraw a submission.' });
+  const userId = req.userId;
+
+  if (!userId && !sessionToken) {
+    return res.status(401).json({ error: 'Authentication required to withdraw a submission.' });
   }
 
   try {
-    const { rowCount } = await pool.query(
-      `UPDATE submissions
-       SET status = 'withdrawn', reviewed_at = NOW()
-       WHERE id = $1
-         AND session_token = $2
-         AND status IN ('pending', 'rejected')`,
-      [req.params.id, sessionToken]
-    );
+    let query: string;
+    let params: unknown[];
+
+    if (userId) {
+      query = `UPDATE submissions
+               SET status = 'withdrawn', reviewed_at = NOW()
+               WHERE id = $1
+                 AND user_id = $2
+                 AND status IN ('pending', 'rejected')`;
+      params = [req.params.id, userId];
+    } else {
+      query = `UPDATE submissions
+               SET status = 'withdrawn', reviewed_at = NOW()
+               WHERE id = $1
+                 AND session_token = $2
+                 AND status IN ('pending', 'rejected')`;
+      params = [req.params.id, sessionToken];
+    }
+
+    const { rowCount } = await pool.query(query, params);
     if (rowCount === 0) {
       return res.status(404).json({
-        error: 'Submission not found, already approved, or session token does not match.',
+        error: 'Submission not found, already approved, or authentication does not match.',
       });
     }
     return res.json({ success: true });
