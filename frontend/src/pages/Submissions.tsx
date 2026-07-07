@@ -7,7 +7,7 @@ import Badge from '../components/ui/Badge';
 import { SubmissionSkeleton } from '../components/ui/Skeleton';
 import { submissionService, type SubmissionListItem } from '../services/submission.service';
 import { CANCER_TYPES, IMAGING_MODALITIES } from '../data/medical';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 const STATUS_CONFIG = {
   pending: { label: 'Under Review', icon: Clock, color: 'warning' as const },

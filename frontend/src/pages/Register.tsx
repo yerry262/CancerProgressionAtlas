@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'react-hot-toast';
 import { UserPlus, Dna, Eye, EyeOff, CheckCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { registerSchema, type RegisterFormValues } from '../lib/validation';
 
 const PERKS = [
@@ -23,6 +23,7 @@ export default function Register() {
     resolver: zodResolver(registerSchema),
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form's watch() is a known React Compiler incompatibility, not a bug
   const pw = watch('password', '');
 
   const onSubmit = async (values: RegisterFormValues) => {

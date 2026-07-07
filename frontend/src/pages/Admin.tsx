@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
@@ -6,7 +6,7 @@ import {
   ShieldCheck, CheckCircle, XCircle, ChevronDown,
   ChevronUp, Loader2, FileText, AlertTriangle,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import api from '../services/api';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -227,31 +227,20 @@ export default function Admin() {
   const [actionId, setActionId] = useState<string | null>(null);
 
   // Redirect unauthenticated users
-  if (!isAuthenticated) {
-    navigate('/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) navigate('/login');
+  }, [isAuthenticated, navigate]);
 
-  // Show access denied for non-admins
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen pt-28 px-6 flex items-center justify-center">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: 'rgba(255,61,90,0.08)', border: '1px solid rgba(255,61,90,0.2)' }}>
-            <AlertTriangle className="w-8 h-8" style={{ color: '#ff3d5a' }} />
-          </div>
-          <h1 className="text-xl font-bold mb-2" style={{ color: '#c8dff0' }}>Access Denied</h1>
-          <p className="text-sm" style={{ color: '#6a8fa8' }}>This page is only accessible to admins.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const { data: stats } = useQuery({ queryKey: ['adminStats'], queryFn: adminApi.stats, refetchInterval: 30_000 });
+  const { data: stats } = useQuery({
+    queryKey: ['adminStats'],
+    queryFn: adminApi.stats,
+    refetchInterval: 30_000,
+    enabled: isAuthenticated && isAdmin,
+  });
   const { data: queue, isLoading } = useQuery({
     queryKey: ['adminQueue', tab],
     queryFn: () => adminApi.list(tab),
+    enabled: isAuthenticated && isAdmin,
   });
 
   const invalidate = () => {
@@ -286,6 +275,23 @@ export default function Admin() {
     { key: 'approved', label: 'Approved', color: '#00e676' },
     { key: 'rejected', label: 'Rejected', color: '#ff3d5a' },
   ];
+
+  if (!isAuthenticated) return null;
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen pt-28 px-6 flex items-center justify-center">
+        <div className="text-center max-w-sm">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ background: 'rgba(255,61,90,0.08)', border: '1px solid rgba(255,61,90,0.2)' }}>
+            <AlertTriangle className="w-8 h-8" style={{ color: '#ff3d5a' }} />
+          </div>
+          <h1 className="text-xl font-bold mb-2" style={{ color: '#c8dff0' }}>Access Denied</h1>
+          <p className="text-sm" style={{ color: '#6a8fa8' }}>This page is only accessible to admins.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-28 pb-20 px-6">

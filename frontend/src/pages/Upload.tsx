@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'react-hot-toast';
 import {
@@ -45,7 +45,8 @@ function loadDraft(): UploadFormData {
 
 function saveDraft(form: UploadFormData) {
   try {
-    const { files: _f, ...rest } = form;
+    const rest: Partial<UploadFormData> = { ...form };
+    delete rest.files;
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(rest));
   } catch { /* ignore */ }
 }
@@ -204,13 +205,13 @@ export default function Upload() {
   const [submitted, setSubmitted] = useState(false);
   const [submissionId, setSubmissionId] = useState('');
   const [draftSaved, setDraftSaved] = useState(false);
-  const draftTimer = useState<ReturnType<typeof setTimeout> | null>(null);
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flashDraftSaved = useCallback(() => {
     setDraftSaved(true);
-    if (draftTimer[0]) clearTimeout(draftTimer[0]);
-    draftTimer[0] = setTimeout(() => setDraftSaved(false), 2000);
-  }, [draftTimer]);
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => setDraftSaved(false), 2000);
+  }, []);
 
   const set = useCallback(<K extends keyof UploadFormData>(field: K, value: UploadFormData[K]) => {
     setForm((f) => {
