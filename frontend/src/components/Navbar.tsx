@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Upload, Menu, X, Dna, LogIn, LogOut, User, ChevronDown, ShieldCheck } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { toast } from 'react-hot-toast';
 
 const links = [
